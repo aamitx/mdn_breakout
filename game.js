@@ -1,32 +1,48 @@
 const ballRadius = 10;
+const paddleDimensions = [75, 10];
 
 function runGame() {
   let canvas = document.getElementById("myCanvas");
   let ctx = canvas.getContext("2d");
   let state = {
-    x: canvas.width / 2,
-    y: canvas.height / 2,
-    dx: 2,
-    dy: -2
+    ball: {
+      x: canvas.width / 2,
+      y: canvas.height / 2,
+      dx: 2,
+      dy: -2
+    },
+    paddle: {
+      x: (canvas.width - paddleDimensions[0]) / 2
+    },
+    controls: {
+      leftPressed: false,
+      rightPressed: false
+    }
   };
+
+  let keyHandler = isUpHandler => e => {
+    if (e.key == "Right" || e.key == "ArrowRight") {
+      state.controls.rightPressed = !isUpHandler;
+    } else if (e.key == "Left" || e.key == "ArrowLeft") {
+      state.controls.leftPressed = !isUpHandler;
+    }
+  };
+  document.addEventListener("keyup", keyHandler(/*isUpHandler=*/ true), false);
+  document.addEventListener(
+    "keydown",
+    keyHandler(/*isUpHandler=*/ false),
+    false
+  );
+
   let handler = () => draw(canvas, ctx, state);
   setInterval(handler, 10);
 }
 
 function draw(canvas, ctx, state) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  let { x, y, dx, dy } = state;
-  drawBall(ctx, x, y);
-
-  state.x += dx;
-  state.y += dy;
-
-  if (x + dx > canvas.width - ballRadius || x + dx < ballRadius) {
-    state.dx = -dx;
-  }
-  if (y + dy > canvas.height - ballRadius || y + dy < ballRadius) {
-    state.dy = -dy;
-  }
+  drawBall(ctx, state.ball.x, state.ball.y);
+  drawPaddle(canvas, ctx, state.paddle);
+  applyPhysics(canvas, state);
 }
 
 function drawBall(ctx, x, y) {
@@ -35,4 +51,45 @@ function drawBall(ctx, x, y) {
   ctx.fillStyle = "#0095DD";
   ctx.fill();
   ctx.closePath();
+}
+
+function drawPaddle(canvas, ctx, paddle) {
+  let [paddleWidth, paddleHeight] = paddleDimensions;
+  ctx.beginPath();
+  ctx.rect(paddle.x, canvas.height - paddleHeight, paddleWidth, paddleHeight);
+  ctx.fillStyle = "#0095DD";
+  ctx.fill();
+  ctx.closePath();
+}
+
+function applyPhysics(canvas, state) {
+  let ballState = state.ball;
+  let { x, y, dx, dy } = ballState;
+
+  ballState.x += dx;
+  ballState.y += dy;
+
+  if (x + dx > canvas.width - ballRadius || x + dx < ballRadius) {
+    ballState.dx = -dx;
+  }
+  if (y + dy > canvas.height - ballRadius || y + dy < ballRadius) {
+    ballState.dy = -dy;
+  }
+
+  let { leftPressed, rightPressed } = state.controls;
+  if (leftPressed) {
+    state.paddle.x = clampPaddle(canvas.width, state.paddle.x - 7);
+  } else if (rightPressed) {
+    state.paddle.x = clampPaddle(canvas.width, state.paddle.x + 7);
+  }
+}
+
+function clampPaddle(canvasWidth, newX) {
+  if (newX < 0) {
+    return 0;
+  } else if (newX + paddleDimensions[0] > canvasWidth) {
+    return canvasWidth - paddleDimensions[0];
+  } else {
+    return newX;
+  }
 }
