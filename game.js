@@ -14,15 +14,13 @@ const staticBrickData = {
 function runGame() {
   let canvas = document.getElementById("myCanvas");
   let ctx = canvas.getContext("2d");
-  let gameInterval = undefined;
+  let userState = {
+    gameRunning: true,
+    score: 0,
+    gameEndedInWin: undefined
+  };
   let gameOverHandler = (isWin, finalScore) => {
-    if (gameInterval) {
-      clearInterval(gameInterval);
-    }
-    let finalScoreMessage = `Final Score: ${finalScore}`;
-    let gameStateMessage = isWin ? "Win" : "Lose";
-    let msg = `You ${gameStateMessage}! ${finalScoreMessage}`;
-    alert(msg);
+    userState.gameEndedInWin = isWin;
   };
 
   let bricks = [];
@@ -47,9 +45,7 @@ function runGame() {
       leftPressed: false,
       rightPressed: false
     },
-    user: {
-      score: 0
-    },
+    user: userState,
     bricks,
     gameOverHandler
   };
@@ -70,7 +66,7 @@ function runGame() {
   );
 
   let handler = () => draw(canvas, ctx, state);
-  gameInterval = setInterval(handler, 10);
+  requestAnimationFrame(handler);
 }
 
 function draw(canvas, ctx, state) {
@@ -80,6 +76,11 @@ function draw(canvas, ctx, state) {
   drawBall(ctx, state.ball);
   drawPaddle(canvas, ctx, state.paddle);
   applyPhysics(canvas, state);
+
+  // While game is started/not paused and not over, request new frames.
+  if (state.user.gameRunning && state.user.gameEndedInWin == undefined) {
+    requestAnimationFrame(() => draw(canvas, ctx, state));
+  }
 }
 
 function drawScore(ctx, score) {
