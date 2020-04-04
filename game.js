@@ -15,7 +15,7 @@ function runGame() {
   let canvas = document.getElementById("myCanvas");
   let ctx = canvas.getContext("2d");
   let userState = {
-    gameRunning: true,
+    gameRunning: false,
     score: 0,
     gameEndedInWin: undefined
   };
@@ -67,12 +67,28 @@ function runGame() {
     keyHandler(/*isUpHandler=*/ false),
     false
   );
-
   let handler = timestamp => draw(canvas, ctx, state, timestamp);
+
+  document.addEventListener(
+    "keydown",
+    e => {
+      if (e.key == " ") {
+        console.log("Space");
+        state.user.gameRunning = !state.user.gameRunning;
+        requestAnimationFrame(handler);
+      }
+    },
+    false
+  );
   requestAnimationFrame(handler);
 }
 
 function draw(canvas, ctx, state, timestamp) {
+  // Need an early check because in pause handler user can trigger new draw but if game is over we don't want to
+  // move redraw.
+  if (state.user.gameEndedInWin !== undefined) {
+    return;
+  }
   console.log(timestamp - state.debugState.millisecondsSinceLastRun);
   state.debugState.millisecondsSinceLastRun = timestamp;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
