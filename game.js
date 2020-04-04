@@ -4,6 +4,14 @@ const paddleDimensions = [75, 10];
 function runGame() {
   let canvas = document.getElementById("myCanvas");
   let ctx = canvas.getContext("2d");
+  let gameInterval = undefined;
+  let gameOverHandler = () => {
+    if (gameInterval) {
+      clearInterval(gameInterval);
+    }
+    alert("Game Over");
+  };
+
   let state = {
     ball: {
       x: canvas.width / 2,
@@ -17,7 +25,8 @@ function runGame() {
     controls: {
       leftPressed: false,
       rightPressed: false
-    }
+    },
+    gameOverHandler
   };
 
   let keyHandler = isUpHandler => e => {
@@ -27,6 +36,7 @@ function runGame() {
       state.controls.leftPressed = !isUpHandler;
     }
   };
+
   document.addEventListener("keyup", keyHandler(/*isUpHandler=*/ true), false);
   document.addEventListener(
     "keydown",
@@ -35,17 +45,18 @@ function runGame() {
   );
 
   let handler = () => draw(canvas, ctx, state);
-  setInterval(handler, 10);
+  gameInterval = setInterval(handler, 10);
 }
 
 function draw(canvas, ctx, state) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  drawBall(ctx, state.ball.x, state.ball.y);
+  drawBall(ctx, state.ball);
   drawPaddle(canvas, ctx, state.paddle);
   applyPhysics(canvas, state);
 }
 
-function drawBall(ctx, x, y) {
+function drawBall(ctx, ball) {
+  let { x, y } = ball;
   ctx.beginPath();
   ctx.arc(x, y, ballRadius, 0, Math.PI * 2);
   ctx.fillStyle = "#0095DD";
@@ -72,8 +83,16 @@ function applyPhysics(canvas, state) {
   if (x + dx > canvas.width - ballRadius || x + dx < ballRadius) {
     ballState.dx = -dx;
   }
-  if (y + dy > canvas.height - ballRadius || y + dy < ballRadius) {
-    ballState.dy = -dy;
+  if (y + dy < ballRadius) {
+    ballState.dy *= -1;
+  } else if (y + dy > canvas.height - ballRadius) {
+    // FIXME: we're ignoring paddle height here.
+    if (x < state.paddle.x + paddleDimensions[0] && x > state.paddle.x) {
+      ballState.dy *= -1;
+    } else {
+      // FIXME: calling gameOverHandler in applyPhysics is weird.
+      state.gameOverHandler();
+    }
   }
 
   let { leftPressed, rightPressed } = state.controls;
