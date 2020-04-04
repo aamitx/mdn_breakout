@@ -35,8 +35,8 @@ function runGame() {
     ball: {
       x: canvas.width / 2,
       y: canvas.height / 2,
-      dx: 2,
-      dy: -2
+      dx: 3.5,
+      dy: -3.5
     },
     paddle: {
       x: (canvas.width - paddleDimensions[0]) / 2
@@ -47,7 +47,10 @@ function runGame() {
     },
     user: userState,
     bricks,
-    gameOverHandler
+    gameOverHandler,
+    debugState: {
+      millisecondsSinceLastRun: 0
+    }
   };
 
   let keyHandler = isUpHandler => e => {
@@ -65,11 +68,13 @@ function runGame() {
     false
   );
 
-  let handler = () => draw(canvas, ctx, state);
+  let handler = timestamp => draw(canvas, ctx, state, timestamp);
   requestAnimationFrame(handler);
 }
 
-function draw(canvas, ctx, state) {
+function draw(canvas, ctx, state, timestamp) {
+  console.log(timestamp - state.debugState.millisecondsSinceLastRun);
+  state.debugState.millisecondsSinceLastRun = timestamp;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawScore(ctx, state.user.score);
   drawBricks(ctx, state.bricks);
@@ -79,7 +84,7 @@ function draw(canvas, ctx, state) {
 
   // While game is started/not paused and not over, request new frames.
   if (state.user.gameRunning && state.user.gameEndedInWin == undefined) {
-    requestAnimationFrame(() => draw(canvas, ctx, state));
+    requestAnimationFrame(timestamp => draw(canvas, ctx, state, timestamp));
   }
 }
 
