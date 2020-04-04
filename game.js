@@ -11,9 +11,7 @@ const staticBrickData = {
   offsetLeft: 30
 };
 
-function runGame() {
-  let canvas = document.getElementById("myCanvas");
-  let ctx = canvas.getContext("2d");
+function getInitialGameState(canvas) {
   let userState = {
     gameRunning: false,
     score: 0,
@@ -21,6 +19,7 @@ function runGame() {
   };
   let gameOverHandler = (isWin, finalScore) => {
     userState.gameEndedInWin = isWin;
+    userState.gameRunning = false;
   };
 
   let bricks = [];
@@ -30,28 +29,56 @@ function runGame() {
       bricks[col][row] = { x: undefined, y: undefined, hit: false };
     }
   }
+  let ballState = {
+    x: canvas.width / 2,
+    y: canvas.height / 2,
+    dx: 3.5,
+    dy: -3.5
+  };
+  let paddleState = {
+    x: (canvas.width - paddleDimensions[0]) / 2
+  };
+  let controlsState = {
+    leftPressed: false,
+    rightPressed: false
+  };
+  let newGameState = {
+    ball: copy(ballState),
+    paddle: copy(paddleState),
+    controls: copy(controlsState),
+    user: copy(userState)
+  };
 
   let state = {
-    ball: {
-      x: canvas.width / 2,
-      y: canvas.height / 2,
-      dx: 3.5,
-      dy: -3.5
-    },
-    paddle: {
-      x: (canvas.width - paddleDimensions[0]) / 2
-    },
-    controls: {
-      leftPressed: false,
-      rightPressed: false
-    },
+    ball: ballState,
+    paddle: paddleState,
+    controls: controlsState,
     user: userState,
     bricks,
     gameOverHandler,
     debugState: {
       millisecondsSinceLastRun: 0
-    }
+    },
+    newGameState
   };
+  return state;
+}
+
+function copy(d) {
+  return Object.assign({}, d);
+}
+
+function reassign(a, b) {
+  Object.keys(a).forEach(k => {
+    b[k] = a[k];
+  });
+}
+
+function runGame() {
+  let canvas = document.getElementById("myCanvas");
+  let ctx = canvas.getContext("2d");
+
+  let state = getInitialGameState(canvas);
 
   let keyHandler = isUpHandler => e => {
     if (e.key == "Right" || e.key == "ArrowRight") {
@@ -73,7 +100,9 @@ function runGame() {
     "keydown",
     e => {
       if (e.key == " ") {
-        console.log("Space");
+        if (state.user.gameEndedInWin !== undefined) {
+          reinitGameState(state);
+        }
         state.user.gameRunning = !state.user.gameRunning;
         requestAnimationFrame(handler);
       }
@@ -83,24 +112,56 @@ function runGame() {
   requestAnimationFrame(handler);
 }
 
+function reinitGameState(state) {
+  reassign(state.newGameState.ball, state.ball);
+  reassign(state.newGameState.paddle, state.paddle);
+  reassign(state.newGameState.controls, state.controls);
+  reassign(state.newGameState.user, state.user);
+  for (let col = 0; col < staticBrickData.columns; col++) {
+    for (let row = 0; row < staticBrickData.rows; row++) {
+      state.bricks[col][row].hit = false;
+    }
+  }
+}
+
 function draw(canvas, ctx, state, timestamp) {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  console.log(timestamp - state.debugState.millisecondsSinceLastRun);
+
   // Need an early check because in pause handler user can trigger new draw but if game is over we don't want to
   // move redraw.
   if (state.user.gameEndedInWin !== undefined) {
-    return;
+    drawMenuScreen(canvas, ctx, state);
+  } else {
+    state.debugState.millisecondsSinceLastRun = timestamp;
+    drawScore(ctx, state.user.score);
+    drawBricks(ctx, state.bricks);
+    drawBall(ctx, state.ball);
+    drawPaddle(canvas, ctx, state.paddle);
   }
-  console.log(timestamp - state.debugState.millisecondsSinceLastRun);
-  state.debugState.millisecondsSinceLastRun = timestamp;
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  drawScore(ctx, state.user.score);
-  drawBricks(ctx, state.bricks);
-  drawBall(ctx, state.ball);
-  drawPaddle(canvas, ctx, state.paddle);
-  applyPhysics(canvas, state);
-
-  // While game is started/not paused and not over, request new frames.
-  if (state.user.gameRunning && state.user.gameEndedInWin == undefined) {
+  if (state.user.gameRunning) {
+    applyPhysics(canvas, state);
     requestAnimationFrame(timestamp => draw(canvas, ctx, state, timestamp));
+  }
+}
+
+function drawMenuScreen(canvas, ctx, state) {
+  ctx.font = "16px Arial";
+  ctx.fillStyle = "#0095DD";
+
+  let newGameText = "Press space for new game";
+  let textDim = ctx.measureText(newGameText);
+  let x = (canvas.width - textDim.width) / 2;
+
+  ctx.fillText(newGameText, x, (canvas.height + 16) / 2);
+
+  if (state.user.gameEndedInWin !== undefined) {
+    let gameEndState = state.user.gameEndedInWin === true ? "win" : "lose";
+    let gameEndMsg = `Game Over. You ${gameEndState}! Final score: ${state.user.score}`;
+    let msgDim = ctx.measureText(gameEndMsg);
+    let msgX = (canvas.width - msgDim.width) / 2;
+    let msgY = (canvas.height - 48) / 2;
+    ctx.fillText(gameEndMsg, msgX, msgY);
   }
 }
 
