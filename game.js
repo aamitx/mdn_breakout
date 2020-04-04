@@ -1,6 +1,6 @@
 const ballRadius = 10;
 const paddleDimensions = [75, 10];
-const brickData = {
+const staticBrickData = {
   rows: 3,
   columns: 5,
   width: 75,
@@ -23,10 +23,10 @@ function runGame() {
   };
 
   let bricks = [];
-  for (let col = 0; col < brickData.columns; col++) {
+  for (let col = 0; col < staticBrickData.columns; col++) {
     bricks[col] = [];
-    for (let row = 0; row < brickData.rows; row++) {
-      bricks[col][row] = { x: 0, y: 0 };
+    for (let row = 0; row < staticBrickData.rows; row++) {
+      bricks[col][row] = { x: undefined, y: undefined, hit: false };
     }
   }
 
@@ -102,9 +102,10 @@ function drawBricks(ctx, bricks) {
     padding,
     offsetLeft,
     offsetTop
-  } = brickData;
+  } = staticBrickData;
   for (let c = 0; c < columns; c++) {
     for (let r = 0; r < rows; r++) {
+      if (bricks[c][r].hit) continue;
       let brickX = c * (width + padding) + offsetLeft;
       let brickY = r * (height + padding) + offsetTop;
       bricks[c][r].x = brickX;
@@ -145,6 +146,21 @@ function applyPhysics(canvas, state) {
     state.paddle.x = clampPaddle(canvas.width, state.paddle.x - 7);
   } else if (rightPressed) {
     state.paddle.x = clampPaddle(canvas.width, state.paddle.x + 7);
+  }
+
+  let { rows, columns, width, height } = staticBrickData;
+  for (let col = 0; col < columns; col++) {
+    for (let row = 0; row < rows; row++) {
+      let brick = state.bricks[col][row];
+      if (!brick.hit) {
+        let xCollision = x > brick.x && x < brick.x + width;
+        let yCollision = y > brick.y && y < brick.y + height;
+        if (xCollision && yCollision) {
+          ballState.dy *= -1;
+          brick.hit = true;
+        }
+      }
+    }
   }
 }
 
