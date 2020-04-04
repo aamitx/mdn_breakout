@@ -15,11 +15,14 @@ function runGame() {
   let canvas = document.getElementById("myCanvas");
   let ctx = canvas.getContext("2d");
   let gameInterval = undefined;
-  let gameOverHandler = () => {
+  let gameOverHandler = (isWin, finalScore) => {
     if (gameInterval) {
       clearInterval(gameInterval);
     }
-    alert("Game Over");
+    let finalScoreMessage = `Final Score: ${finalScore}`;
+    let gameStateMessage = isWin ? "Win" : "Lose";
+    let msg = `You ${gameStateMessage}! ${finalScoreMessage}`;
+    alert(msg);
   };
 
   let bricks = [];
@@ -43,6 +46,9 @@ function runGame() {
     controls: {
       leftPressed: false,
       rightPressed: false
+    },
+    user: {
+      score: 0
     },
     bricks,
     gameOverHandler
@@ -69,10 +75,17 @@ function runGame() {
 
 function draw(canvas, ctx, state) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawScore(ctx, state.user.score);
   drawBricks(ctx, state.bricks);
   drawBall(ctx, state.ball);
   drawPaddle(canvas, ctx, state.paddle);
   applyPhysics(canvas, state);
+}
+
+function drawScore(ctx, score) {
+  ctx.font = "16px Arial";
+  ctx.fillStyle = "#0095DD";
+  ctx.fillText("Score: " + score, 8, 20);
 }
 
 function drawBall(ctx, ball) {
@@ -137,7 +150,7 @@ function applyPhysics(canvas, state) {
       ballState.dy *= -1;
     } else {
       // FIXME: calling gameOverHandler in applyPhysics is weird.
-      state.gameOverHandler();
+      state.gameOverHandler(/*isWin=*/ false, state.user.score);
     }
   }
 
@@ -158,6 +171,10 @@ function applyPhysics(canvas, state) {
         if (xCollision && yCollision) {
           ballState.dy *= -1;
           brick.hit = true;
+          state.user.score += 1;
+          if (state.user.score == rows * columns) {
+            state.gameOverHandler(/*isWin=*/ true, state.user.score);
+          }
         }
       }
     }
